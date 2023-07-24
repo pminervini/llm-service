@@ -59,7 +59,7 @@ def get_model(model_name: str, peft_model_name: Optional[str], do_compile: bool 
 
         tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True)
 
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs) #.to(device)
+        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs)
         # model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs).to(device)
 
         if peft_model_name is not None:
@@ -93,16 +93,17 @@ def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, tempe
     logger.info(f"max_new_tokens: {max_new_tokens}")
 
     inputs = tokenizer(prompt, return_tensors="pt")
-    input_ids = inputs["input_ids"].to(device)
+    input_ids = inputs["input_ids"].to(model.device)
 
     generation_config = GenerationConfig(temperature=temperature, top_p=top_p, top_k=top_k, num_beams=num_beams, **kwargs)
+
     with torch.inference_mode():
         generation_output = model.generate(input_ids=input_ids, generation_config=generation_config, return_dict_in_generate=True,
                                            output_scores=True, max_new_tokens=max_new_tokens)
 
     s = generation_output.sequences[0]
     res = tokenizer.decode(s)
-    return res
+    return res, tokenizer
 
 
 # define the completion endpoint
@@ -113,9 +114,6 @@ def generate():
 
     model_name = data["model"]
     peft_model_name = data.get("peft_model", None)
-
-    # update model
-    model_name, peft_model_name, tokenizer, model = get_model(model_name, peft_model_name)
 
     # get the prompt and other parameters from the request data
     prompt = data["prompt"]
@@ -129,11 +127,12 @@ def generate():
     kwargs = decode_kwargs(data)
 
     # generate the completion
-    generated_text = evaluate(model_name, peft_model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
-                              num_beams=num_beams, max_new_tokens=max_new_tokens, **kwargs)
+    generated_text, tokenizer = evaluate(model_name, peft_model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
+                                         num_beams=num_beams, max_new_tokens=max_new_tokens, **kwargs)
 
     prompt_tokens = len(tokenizer.encode(prompt))
     completion_tokens = len(tokenizer.encode(generated_text))
+
     total_tokens = prompt_tokens + completion_tokens
 
     res = jsonify({
