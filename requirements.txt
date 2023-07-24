@@ -1,0 +1,11 @@
+tokenizers
+transformers
+huggingface_hub
+flask
+accelerate
+datasets
+evaluate
+sentencepiece
+bitsandbytes
+peft
+loralib
