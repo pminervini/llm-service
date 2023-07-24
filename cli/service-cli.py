@@ -5,7 +5,7 @@ import sys
 import time
 import torch
 
-# from peft import PeftModel
+from peft import PeftModel
 
 from flask import Flask, make_response, request
 from flask.json import jsonify
@@ -15,19 +15,19 @@ from transformers import GenerationConfig
 
 from chainer.util import get_models, decode_kwargs, clean_cache
 
-from typing import Tuple, Any
+from typing import Tuple, Optional, Any
 
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-# LORA_WEIGHTS = "tloen/alpaca-lora-7b"
-
 # set up the Flask application
 app = Flask(__name__)
 
 cached_model_name = None
+cached_peft_model_name = None
+
 cached_tokenizer = None
 cached_model = None
 
@@ -39,21 +39,21 @@ if torch.cuda.is_available():
 logger.info(f"Using device: {device}")
 
 
-def get_model(model_name: str) -> Tuple[str, Any, Any]:
+def get_model(model_name: str, peft_model_name: Optional[str], do_compile: bool = True) -> Tuple[str, str, Any, Any]:
     global cached_model_name, cached_tokenizer, cached_model
 
     tokenizer = cached_tokenizer
     model = cached_model
 
-    if model_name is None or model_name != cached_model_name:
+    if model_name is None or (model_name != cached_model_name or peft_model_name != cached_peft_model_name):
         logger.info(f"Loading model: {model_name}")
 
         model_kwargs = {}
-        # peft_kwargs = {}
+        peft_kwargs = {}
 
         if device == "cuda":
             model_kwargs['torch_dtype'] = torch.bfloat16
-            # peft_kwargs['torch_dtype'] = torch.bfloat16
+            peft_kwargs['torch_dtype'] = torch.bfloat16
         else:
             model_kwargs['low_cpu_mem_usage'] = True
 
@@ -62,8 +62,11 @@ def get_model(model_name: str) -> Tuple[str, Any, Any]:
         model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs).to(device)
         # model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs).to(device)
 
-        # model = PeftModel.from_pretrained(model, LORA_WEIGHTS, device_map="auto", resume_download=True, **peft_kwargs)
-        # model = torch.compile(model)
+        if peft_model_name is not None:
+            model = PeftModel.from_pretrained(model, peft_model_name, device_map="auto", resume_download=True, **peft_kwargs)
+
+        if do_compile is True:
+            model = torch.compile(model)
 
         # breakpoint()
 
@@ -71,15 +74,16 @@ def get_model(model_name: str) -> Tuple[str, Any, Any]:
         cached_tokenizer = tokenizer
         cached_model = model
 
-    return model_name, tokenizer, model
+    return model_name, peft_model_name, tokenizer, model
 
 
-def evaluate(model_name: str, prompt: str, temperature: float = 0.1, top_p: float = 0.75, top_k: int = 40, num_beams: int = 1,
-             max_new_tokens: int = 128, **kwargs):
+def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, temperature: float = 0.1, top_p: float = 0.75,
+             top_k: int = 40, num_beams: int = 1, max_new_tokens: int = 128, **kwargs):
 
-    model_name, tokenizer, model = get_model(model_name)
+    model_name, peft_model_name, tokenizer, model = get_model(model_name, peft_model_name)
 
     logger.info(f"model_name: {model_name}")
+    logger.info(f"peft_model_name: {peft_model_name}")
     logger.info(f"prompt: {prompt}")
     logger.info(f"temperature: {temperature}")
     logger.info(f"top_p: {top_p}")
@@ -107,9 +111,10 @@ def generate():
     data = request.get_json(force=True)
 
     model_name = data["model"]
+    peft_model_name = data.get("peft_model", None)
 
     # update model
-    model_name, tokenizer, model = get_model(model_name)
+    model_name, peft_model_name, tokenizer, model = get_model(model_name, peft_model_name)
 
     # get the prompt and other parameters from the request data
     prompt = data["prompt"]
@@ -123,7 +128,7 @@ def generate():
     kwargs = decode_kwargs(data)
 
     # generate the completion
-    generated_text = evaluate(model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
+    generated_text = evaluate(model_name, peft_model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
                               num_beams=num_beams, max_new_tokens=max_new_tokens, **kwargs)
 
     prompt_tokens = len(tokenizer.encode(prompt))
@@ -155,12 +160,12 @@ def models():
     return make_response(jsonify({
         'data': [{
             'object': 'engine',
-            'id': id,
+            'id': model_id,
             'ready': True,
             'owner': 'huggingface',
             'permissions': None,
             'created': None
-        } for id in model_lst]
+        } for model_id in model_lst]
     }))
 
 
