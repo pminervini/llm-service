@@ -40,7 +40,7 @@ logger.info(f"Using device: {device}")
 
 
 def get_model(model_name: str, peft_model_name: Optional[str], do_compile: bool = True) -> Tuple[str, str, Any, Any]:
-    global cached_model_name, cached_tokenizer, cached_model
+    global cached_model_name, cached_peft_model_name, cached_tokenizer, cached_model
 
     tokenizer = cached_tokenizer
     model = cached_model
@@ -71,6 +71,7 @@ def get_model(model_name: str, peft_model_name: Optional[str], do_compile: bool 
         # breakpoint()
 
         cached_model_name = model_name
+        cached_peft_model_name = peft_model_name
         cached_tokenizer = tokenizer
         cached_model = model
 
