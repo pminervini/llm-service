@@ -22,7 +22,7 @@ def main(argv):
         "temperature": 0
     }
 
-    r = requests.post(url=service_endpoint, data=data)
+    r = requests.post(url=service_endpoint, json=data)
 
     # extracting response text
     # pastebin_url = r.text
