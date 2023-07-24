@@ -1,3 +1,4 @@
+requests
 tokenizers
 transformers
 huggingface_hub
