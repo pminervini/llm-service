@@ -59,7 +59,7 @@ def get_model(model_name: str, peft_model_name: Optional[str], do_compile: bool 
 
         tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True)
 
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs).to(device)
+        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs) #.to(device)
         # model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs).to(device)
 
         if peft_model_name is not None:
