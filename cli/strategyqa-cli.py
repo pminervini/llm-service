@@ -48,7 +48,7 @@ def main():
     dev_idx = np.array([0, 1, 2])
     dev_data = [train_data[i] for i in dev_idx]
 
-    with open('lib_prompt/prompt_original_step.txt') as f:
+    with open('lib_prompt/strategyqa/prompt_original_step.txt') as f:
         prompt_original_step = f.read()
 
     model_name = 'pminervini/llama-65b'
