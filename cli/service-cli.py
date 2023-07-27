@@ -84,7 +84,8 @@ def get_model(model_name: str, peft_model_name: Optional[str],
         cache = {
             'name': {
                 'model': model_name,
-                'peft_model': peft_model_name
+                'peft_model': peft_model_name,
+                'dtype': dtype
             },
 
             'tokenizer': tokenizer,
