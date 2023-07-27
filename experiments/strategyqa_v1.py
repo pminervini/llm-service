@@ -40,7 +40,7 @@ def main(argv):
 
     configurations = list(cartesian_product(hyp_space))
 
-    path = 'logs/accenture_gene-disease_072023/gene-disease_v1'
+    path = 'logs/strategyqa/strategyqa_v1'
 
     is_beaker = False
     is_slurm = False
