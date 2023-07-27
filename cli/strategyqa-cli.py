@@ -51,7 +51,7 @@ def main():
     with open('lib_prompt/strategyqa/prompt_original_step.txt') as f:
         prompt_original_step = f.read()
 
-    model_name = 'pminervini/llama-65b'
+    model_name = 'pminervini/llama-7b'
     endpoint = "http://127.0.0.1:5000/generate"
 
     acc = 0
