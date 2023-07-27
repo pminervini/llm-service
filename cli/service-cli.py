@@ -26,11 +26,16 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 semaphore = threading.Semaphore()
 
-cached_model_name = None
-cached_peft_model_name = None
+# Only keep one model in memory at any given time
+cache = {
+    'name': {
+        'model': None,
+        'peft_model': None
+    },
 
-cached_tokenizer = None
-cached_model = None
+    'tokenizer': None,
+    'model': None
+}
 
 # find out which device we are using
 device = "cpu"
@@ -40,27 +45,31 @@ if torch.cuda.is_available():
 logger.info(f"Using device: {device}")
 
 
-def get_model(model_name: str, peft_model_name: Optional[str], do_compile: bool = True) -> Tuple[str, str, Any, Any]:
-    global cached_model_name, cached_peft_model_name, cached_tokenizer, cached_model
+def get_model(model_name: str, peft_model_name: Optional[str],
+              do_compile: bool = True, dtype: torch.dtype = torch.bfloat16) -> Tuple[Any, Any]:
+    global cache
 
-    tokenizer = cached_tokenizer
-    model = cached_model
+    tokenizer = cache['tokenizer']
+    model = cache['model']
 
-    if model_name is None or (model_name != cached_model_name or peft_model_name != cached_peft_model_name):
+    load_new_model = model is None
+    if model_name != cache['name']['model'] or peft_model_name != cache['name']['peft_model']:
+        load_new_model = True
+
+    if load_new_model:
         logger.info(f"Loading model: {model_name}")
 
         model_kwargs = {}
         peft_kwargs = {}
 
         if device == "cuda":
-            model_kwargs['torch_dtype'] = torch.bfloat16
-            peft_kwargs['torch_dtype'] = torch.bfloat16
+            model_kwargs['torch_dtype'] = dtype
+            peft_kwargs['torch_dtype'] = dtype
         else:
             model_kwargs['low_cpu_mem_usage'] = True
 
         tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True)
         model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs)
-        # model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs).to(device)
 
         if peft_model_name is not None:
             model = PeftModel.from_pretrained(model, peft_model_name, device_map="auto", resume_download=True, **peft_kwargs)
@@ -68,20 +77,23 @@ def get_model(model_name: str, peft_model_name: Optional[str], do_compile: bool 
         if do_compile is True:
             model = torch.compile(model)
 
-        # breakpoint()
+        cache = {
+            'name': {
+                'model': model_name,
+                'peft_model': peft_model_name
+            },
 
-        cached_model_name = model_name
-        cached_peft_model_name = peft_model_name
-        cached_tokenizer = tokenizer
-        cached_model = model
+            'tokenizer': tokenizer,
+            'model': model
+        }
 
-    return model_name, peft_model_name, tokenizer, model
+    return tokenizer, model
 
 
 def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, temperature: float = 0.1, top_p: float = 0.75,
              top_k: int = 40, num_beams: int = 1, max_new_tokens: int = 128, **kwargs):
 
-    model_name, peft_model_name, tokenizer, model = get_model(model_name, peft_model_name)
+    tokenizer, model = get_model(model_name, peft_model_name)
 
     logger.info(f"model_name: {model_name}")
     logger.info(f"peft_model_name: {peft_model_name}")
