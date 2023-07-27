@@ -49,10 +49,7 @@ def get_model(model_name: str, peft_model_name: Optional[str],
               do_compile: bool = True, dtype: torch.dtype = torch.bfloat16) -> Tuple[Any, Any]:
     global cache
 
-    tokenizer = cache['tokenizer']
-    model = cache['model']
-
-    load_new_model = model is None
+    load_new_model = cache['model'] is None
     if model_name != cache['name']['model'] or peft_model_name != cache['name']['peft_model']:
         load_new_model = True
 
@@ -67,6 +64,10 @@ def get_model(model_name: str, peft_model_name: Optional[str],
             peft_kwargs['torch_dtype'] = dtype
         else:
             model_kwargs['low_cpu_mem_usage'] = True
+
+        # Free some memory before loading a new model
+        cache['model'] = None
+        cache['tokenizer'] = None
 
         tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True)
         model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs)
@@ -86,6 +87,9 @@ def get_model(model_name: str, peft_model_name: Optional[str],
             'tokenizer': tokenizer,
             'model': model
         }
+
+    tokenizer = cache['tokenizer']
+    model = cache['model']
 
     return tokenizer, model
 
