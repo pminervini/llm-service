@@ -37,7 +37,7 @@ def load_from_json(path):
 
 
 def main():
-    train_data = load_from_json('data/strategyqa_train.json')
+    train_data = load_from_json('data/strategyqa/strategyqa_train.json')
 
     # train_filtered = load_from_json('data/strategyqa_train_filtered.json')
     # train_data_paragraphs = load_from_json('data/strategyqa_train_paragraphs.json')
