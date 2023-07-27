@@ -7,8 +7,8 @@ import torch
 
 from peft import PeftModel
 
-from flask import Flask, make_response, request
-from flask.json import jsonify
+from flask import Flask, make_response, request, json
+from werkzeug.exceptions import HTTPException
 
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSeq2SeqLM
 from transformers import GenerationConfig
@@ -17,13 +17,14 @@ from chainer.util import get_models, decode_kwargs, clean_cache
 
 from typing import Tuple, Optional, Any
 
+import threading
 import logging
 
 logger = logging.getLogger(__name__)
 
-
 # set up the Flask application
 app = Flask(__name__)
+semaphore = threading.Semaphore()
 
 cached_model_name = None
 cached_peft_model_name = None
@@ -58,7 +59,6 @@ def get_model(model_name: str, peft_model_name: Optional[str], do_compile: bool 
             model_kwargs['low_cpu_mem_usage'] = True
 
         tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True)
-
         model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs)
         # model = AutoModelForSeq2SeqLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs).to(device)
 
@@ -109,6 +109,8 @@ def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, tempe
 # define the completion endpoint
 @app.route("/generate", methods=["POST"])
 def generate():
+    semaphore.acquire()
+
     # get the request data
     data = request.get_json(force=True)
 
@@ -135,7 +137,7 @@ def generate():
 
     total_tokens = prompt_tokens + completion_tokens
 
-    res = jsonify({
+    res = json.jsonify({
         'object': 'text_completion',
         'id': 'dummy',
 
@@ -151,13 +153,16 @@ def generate():
         }
     })
 
+    semaphore.release()
+
     return res
 
 
 @app.route('/models')
 def models():
+    semaphore.acquire()
     model_lst = sorted(get_models())
-    return make_response(jsonify({
+    res = make_response(json.jsonify({
         'data': [{
             'object': 'engine',
             'id': model_id,
@@ -167,12 +172,32 @@ def models():
             'created': None
         } for model_id in model_lst]
     }))
+    semaphore.release()
+    return res
 
 
 @app.route('/clean')
 def clean():
+    semaphore.acquire()
     clean_cache()
-    return make_response(jsonify({'done': True}))
+    res = make_response(json.jsonify({'done': True}))
+    semaphore.release()
+    return res
+
+
+@app.errorhandler(HTTPException)
+def handle_exception(e):
+    """Return JSON instead of HTML for HTTP errors."""
+    # start with the correct headers and status code from the error
+    response = e.get_response()
+    # replace the body with JSON
+    response.data = json.dumps({
+        "code": e.code,
+        "name": e.name,
+        "description": e.description,
+    })
+    response.content_type = "application/json"
+    return response
 
 
 if __name__ == "__main__":
