@@ -16,9 +16,8 @@ gsm8k_test = gsm8k['test']
 validation_index = np.load('lib_prompt/gsm8k/validation_index.npy')
 validation_data = gsm8k['train'].select(validation_index)
 
-tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-xxl")
-
-model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-xxl", device_map='auto')
+tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-small")
+model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-small", device_map='auto').to('cpu')
 
 q_lens = [len(d['question']) for d in gsm8k['train']]
 
@@ -30,13 +29,13 @@ input_text = gsm8k['train'][3331]['question']
 
 gsm8k['train'][3331]['answer']
 
-with open('lib_prompt/prompt_complex.txt', 'r') as f:
+with open('lib_prompt/gsm8k/prompt_hard.txt', 'r') as f:
     prompt_complex = f.read()
 
 prompt_q = prompt_complex + '\nQuestion: ' + input_text + '\n'
 print(prompt_q)
 
-input_ids = tokenizer(prompt_q, return_tensors="pt").input_ids
+input_ids = tokenizer(prompt_q, return_tensors="pt").input_ids.to('cpu')
 # input_ids.to("cuda:0")
 input_ids.size()
 
@@ -54,3 +53,8 @@ with torch.inference_mode():
 print(tokenizer.decode(outputs['sequences'][0]))
 print(tokenizer.decode(outputs['sequences'][1]))
 print(tokenizer.decode(outputs['sequences'][2]))
+
+len(outputs['scores'])
+
+outputs['scores'][0].size()
+

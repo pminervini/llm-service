@@ -10,7 +10,7 @@ from peft import PeftModel
 from flask import Flask, make_response, request, json
 from werkzeug.exceptions import HTTPException
 
-from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForSeq2SeqLM
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformers import GenerationConfig
 
 from chainer.util import get_models, decode_kwargs, clean_cache
@@ -63,8 +63,7 @@ def get_model(model_name: str, peft_model_name: Optional[str],
         peft_kwargs = {}
 
         if device == "cuda":
-            model_kwargs['torch_dtype'] = dtype
-            peft_kwargs['torch_dtype'] = dtype
+            model_kwargs['torch_dtype'] = peft_kwargs['torch_dtype'] = dtype
         else:
             model_kwargs['low_cpu_mem_usage'] = True
 
