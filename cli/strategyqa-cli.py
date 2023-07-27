@@ -14,6 +14,7 @@ def completion(endpoint, data):
     r = requests.post(url=endpoint, json=data)
     # breakpoint()
     # return openai.Completion.create(**kwargs)
+    return r.json()
 
 
 def extract_ans(ans_model):
