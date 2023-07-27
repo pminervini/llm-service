@@ -30,7 +30,8 @@ semaphore = threading.Semaphore()
 cache = {
     'name': {
         'model': None,
-        'peft_model': None
+        'peft_model': None,
+        'dtype': None
     },
 
     'tokenizer': None,
@@ -50,7 +51,9 @@ def get_model(model_name: str, peft_model_name: Optional[str],
     global cache
 
     load_new_model = cache['model'] is None
-    if model_name != cache['name']['model'] or peft_model_name != cache['name']['peft_model']:
+    if model_name != cache['name']['model'] \
+            or peft_model_name != cache['name']['peft_model'] \
+            or dtype != cache['name']['dtype']:
         load_new_model = True
 
     if load_new_model:
@@ -95,9 +98,9 @@ def get_model(model_name: str, peft_model_name: Optional[str],
 
 
 def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, temperature: float = 0.1, top_p: float = 0.75,
-             top_k: int = 40, num_beams: int = 1, max_new_tokens: int = 128, **kwargs):
+             top_k: int = 40, num_beams: int = 1, max_new_tokens: int = 128, dtype: torch.dtype = torch.bfloat16, **kwargs):
 
-    tokenizer, model = get_model(model_name, peft_model_name)
+    tokenizer, model = get_model(model_name, peft_model_name, dtype=dtype)
 
     logger.info(f"model_name: {model_name}")
     logger.info(f"peft_model_name: {peft_model_name}")
@@ -142,11 +145,14 @@ def generate():
     num_beams = data.get("num_beams", 1)
     max_new_tokens = data.get("max_new_tokens", 256)
 
+    dtype_str = data.get("dtype", "bfloat16")
+    dtype = getattr(torch, dtype_str)
+
     kwargs = decode_kwargs(data)
 
     # generate the completion
     generated_text, tokenizer = evaluate(model_name, peft_model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
-                                         num_beams=num_beams, max_new_tokens=max_new_tokens, **kwargs)
+                                         num_beams=num_beams, max_new_tokens=max_new_tokens, dtype=dtype, **kwargs)
 
     prompt_tokens = len(tokenizer.encode(prompt))
     completion_tokens = len(tokenizer.encode(generated_text))
