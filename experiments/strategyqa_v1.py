@@ -19,7 +19,7 @@ def summary(configuration):
 
 
 def to_cmd(c, _path=None):
-    command = f'PYTHONPATH=. python3 ./cli/strategyqa-cli.py ' \
+    command = f'PYTHONPATH=. python3 ./cli/scripts/strategyqa-cli.py ' \
               f'--prompt lib_prompt/strategyqa/prompt_{c["p"]}.txt ' \
               f'--model pminervini/{c["m"]} --output outputs/dev_{c["m"]}_{c["p"]}.log'
 
