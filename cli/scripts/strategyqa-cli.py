@@ -108,14 +108,14 @@ def main(argv):
 
             response = completion(endpoint, data)
 
-            breakpoint()
+            # breakpoint()
 
             ans_model = response['choices'][0]['text']
 
             ans_model, _ = extract_ans(ans_model)
             f.write(f'Q: {q}\nA_model:\n{ans_model}\nA:\n{a}\n\n')
 
-            breakpoint()
+            # breakpoint()
 
             ans_ = ans_model.split('answer is ')
             if len(ans_) > 1 and 'yes' in ans_[1]:
