@@ -154,10 +154,15 @@ def generate():
     generated_text, tokenizer = evaluate(model_name, peft_model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
                                          num_beams=num_beams, max_new_tokens=max_new_tokens, dtype=dtype, **kwargs)
 
-    prompt_tokens = len(tokenizer.encode(prompt))
-    completion_tokens = len(tokenizer.encode(generated_text))
+    prompt_ids = tokenizer.encode(prompt)
+    generated_ids = tokenizer.encode(generated_text)
 
-    total_tokens = prompt_tokens + completion_tokens
+    breakpoint()
+
+    nb_prompt_tokens = len(prompt_ids)
+    nb_completion_tokens = len(generated_ids)
+
+    nb_total_tokens = nb_prompt_tokens + nb_completion_tokens
 
     res = json.jsonify({
         'object': 'text_completion',
@@ -169,9 +174,9 @@ def generate():
             [{'text': generated_text, 'finish_reason': 'length'}],
 
         'usage': {
-            'prompt_tokens': prompt_tokens,
-            'completion_tokens': completion_tokens,
-            'total_tokens': total_tokens
+            'prompt_tokens': nb_prompt_tokens,
+            'completion_tokens': nb_completion_tokens,
+            'total_tokens': nb_total_tokens
         }
     })
 
