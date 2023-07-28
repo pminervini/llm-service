@@ -65,6 +65,7 @@ def get_model(model_name: str, peft_model_name: Optional[str],
 
         if device == "cuda":
             model_kwargs['torch_dtype'] = peft_kwargs['torch_dtype'] = dtype
+            model_kwargs['device_map'] = peft_kwargs['device_map'] = "auto"
         else:
             model_kwargs['low_cpu_mem_usage'] = True
 
@@ -73,10 +74,10 @@ def get_model(model_name: str, peft_model_name: Optional[str],
         cache['tokenizer'] = None
 
         tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True, add_prefix_space=True)
-        model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs)
+        model = AutoModelForCausalLM.from_pretrained(model_name, resume_download=True, **model_kwargs)
 
         if peft_model_name is not None:
-            model = PeftModel.from_pretrained(model, peft_model_name, device_map="auto", resume_download=True, **peft_kwargs)
+            model = PeftModel.from_pretrained(model, peft_model_name, resume_download=True, **peft_kwargs)
 
         if do_compile is True:
             model = torch.compile(model)
@@ -99,7 +100,7 @@ def get_model(model_name: str, peft_model_name: Optional[str],
 
 
 def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, temperature: float = 0.1, top_p: float = 0.75,
-             top_k: int = 40, num_beams: int = 1, max_new_tokens: int = 128, dtype: torch.dtype = torch.bfloat16, **kwargs):
+             top_k: int = 40, num_beams: int = 1, max_new_tokens: int = 128, dtype: torch.dtype = torch.bfloat16, **kwargs) -> Tuple[List[str], Any]:
 
     tokenizer, model = get_model(model_name, peft_model_name, dtype=dtype)
 
@@ -121,10 +122,13 @@ def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, tempe
         generation_output = model.generate(input_ids=input_ids, generation_config=generation_config, return_dict_in_generate=True,
                                            output_scores=True, max_new_tokens=max_new_tokens)
 
-    s = generation_output.sequences[0]
-    res = tokenizer.decode(s, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+    res_lst = []
+    for i in range(generation_output.sequences.shape[0]):
+        seq = generation_output.sequences[i]
+        res = tokenizer.decode(seq, skip_special_tokens=True, clean_up_tokenization_spaces=False)
+        res_lst += [res]
 
-    return res, tokenizer
+    return res_lst, tokenizer
 
 
 # define the completion endpoint
@@ -153,18 +157,10 @@ def generate():
     kwargs = decode_kwargs(data)
 
     # generate the completion
-    generated_text, tokenizer = evaluate(model_name, peft_model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
-                                         num_beams=num_beams, max_new_tokens=max_new_tokens, dtype=dtype, **kwargs)
+    generated_text_lst, tokenizer = evaluate(model_name, peft_model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
+                                             num_beams=num_beams, max_new_tokens=max_new_tokens, dtype=dtype, **kwargs)
 
     prompt_ids = tokenizer.encode(prompt)
-    generated_ids = tokenizer.encode(generated_text)
-
-    # breakpoint()
-
-    nb_prompt_tokens = len(prompt_ids)
-    nb_completion_tokens = len(generated_ids)
-
-    nb_total_tokens = nb_prompt_tokens + nb_completion_tokens
 
     def find_sub_list(sl: List[int], l: List[int]) -> Optional[Tuple[int, int]]:
         sll = len(sl)
@@ -173,12 +169,18 @@ def generate():
                 return ind, ind + sll - 1
         return None
 
-    prompt_idx = find_sub_list(prompt_ids, generated_ids)
+    generated_lst = []
 
-    # breakpoint()
-
-    assert prompt_idx is not None
-    completion_text = tokenizer.decode(generated_ids[prompt_idx[1] + 1:], skip_special_tokens=True, clean_up_tokenization_spaces=False)
+    for generated_text in generated_text_lst:
+        generated_ids = tokenizer.encode(generated_text)
+        prompt_idx = find_sub_list(prompt_ids, generated_ids)
+        assert prompt_idx is not None
+        completion_text = tokenizer.decode(generated_ids[prompt_idx[1] + 1:], skip_special_tokens=True, clean_up_tokenization_spaces=False)
+        entry = {
+            'completion': completion_text,
+            'full': generated_text
+        }
+        generated_lst += [entry]
 
     res = json.jsonify({
         'object': 'text_completion',
@@ -188,17 +190,11 @@ def generate():
         'model': model_name,
         'choices': [
                 {
-                    'text': completion_text,
-                    'full_text': generated_text,
+                    'text': entry['completion'],
+                    'full_text': entry['full'],
                     'finish_reason': 'length'
-                }
-            ],
-
-        'usage': {
-            'prompt_tokens': nb_prompt_tokens,
-            'completion_tokens': nb_completion_tokens,
-            'total_tokens': nb_total_tokens
-        }
+                } for entry in generated_lst
+            ]
     })
 
     semaphore.release()
@@ -245,6 +241,7 @@ def handle_exception(e):
         "description": e.description,
     })
     response.content_type = "application/json"
+    semaphore.release()
     return response
 
 

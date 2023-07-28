@@ -113,7 +113,9 @@ def main(argv):
             ans_model = response['choices'][0]['text']
 
             ans_model, _ = extract_ans(ans_model)
+
             f.write(f'Q: {q}\nA_model:\n{ans_model}\nA:\n{a}\n\n')
+            f.flush()
 
             # breakpoint()
 
