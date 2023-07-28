@@ -12,9 +12,8 @@ from werkzeug.exceptions import HTTPException
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformers import GenerationConfig
-from transformers import pipeline
 
-from chainer.util import get_models, decode_kwargs, clean_cache
+from chainer.util import get_models, decode_kwargs, clean_cache, find_sub_list
 
 from typing import Tuple, Optional, Any, List
 
@@ -100,7 +99,7 @@ def get_model(model_name: str, peft_model_name: Optional[str],
 
 
 def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, temperature: float = 0.1, top_p: float = 0.75,
-             top_k: int = 40, num_beams: int = 1, max_new_tokens: int = 128, dtype: torch.dtype = torch.bfloat16, **kwargs) -> Tuple[List[str], Any]:
+             top_k: int = 40, num_beams: int = 1, max_new_tokens: int = 128, dtype: torch.dtype = torch.bfloat16, **kwargs) -> Tuple[List[Any], Any]:
 
     tokenizer, model = get_model(model_name, peft_model_name, dtype=dtype)
 
@@ -125,8 +124,9 @@ def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, tempe
     res_lst = []
     for i in range(generation_output.sequences.shape[0]):
         seq = generation_output.sequences[i]
+        score = generation_output.sequences_scores[i].item()
         res = tokenizer.decode(seq, skip_special_tokens=True, clean_up_tokenization_spaces=False)
-        res_lst += [res]
+        res_lst += [{'text': res, 'score': score}]
 
     return res_lst, tokenizer
 
@@ -157,28 +157,24 @@ def generate():
     kwargs = decode_kwargs(data)
 
     # generate the completion
-    generated_text_lst, tokenizer = evaluate(model_name, peft_model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
-                                             num_beams=num_beams, max_new_tokens=max_new_tokens, dtype=dtype, **kwargs)
+    output_lst, tokenizer = evaluate(model_name, peft_model_name, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
+                                     num_beams=num_beams, max_new_tokens=max_new_tokens, dtype=dtype, **kwargs)
 
     prompt_ids = tokenizer.encode(prompt)
 
-    def find_sub_list(sl: List[int], l: List[int]) -> Optional[Tuple[int, int]]:
-        sll = len(sl)
-        for ind in (i for i, e in enumerate(l) if e == sl[0]):
-            if l[ind:ind + sll] == sl:
-                return ind, ind + sll - 1
-        return None
-
     generated_lst = []
 
-    for generated_text in generated_text_lst:
+    for output in output_lst:
+        generated_text = output['text']
+        score = output['score']
         generated_ids = tokenizer.encode(generated_text)
         prompt_idx = find_sub_list(prompt_ids, generated_ids)
         assert prompt_idx is not None
         completion_text = tokenizer.decode(generated_ids[prompt_idx[1] + 1:], skip_special_tokens=True, clean_up_tokenization_spaces=False)
         entry = {
             'completion': completion_text,
-            'full': generated_text
+            'full': generated_text,
+            'score': score
         }
         generated_lst += [entry]
 
@@ -192,6 +188,7 @@ def generate():
                 {
                     'text': entry['completion'],
                     'full_text': entry['full'],
+                    'score': entry['score'],
                     'finish_reason': 'length'
                 } for entry in generated_lst
             ]

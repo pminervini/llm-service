@@ -4,7 +4,7 @@ import json
 
 from huggingface_hub import scan_cache_dir
 
-from typing import List
+from typing import List, Optional, Tuple
 
 import logging
 
@@ -56,3 +56,11 @@ def decode_kwargs(data):
         kwargs['num_return_sequences'] = data['best_of ']
 
     return kwargs
+
+
+def find_sub_list(sl: List[int], l: List[int]) -> Optional[Tuple[int, int]]:
+    sll = len(sl)
+    for ind in (i for i, e in enumerate(l) if e == sl[0]):
+        if l[ind:ind + sll] == sl:
+            return ind, ind + sll - 1
+    return None
