@@ -122,7 +122,7 @@ def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, tempe
                                            output_scores=True, max_new_tokens=max_new_tokens)
 
     s = generation_output.sequences[0]
-    res = tokenizer.decode(s)
+    res = tokenizer.decode(s, skip_special_tokens=True, clean_up_tokenization_spaces=False)
 
     return res, tokenizer
 
@@ -178,7 +178,7 @@ def generate():
     breakpoint()
 
     assert prompt_idx is not None
-    completion_text = tokenizer.decode(generated_ids[prompt_idx[1] + 1:])
+    completion_text = tokenizer.decode(generated_ids[prompt_idx[1] + 1:], skip_special_tokens=True, clean_up_tokenization_spaces=False)
 
     res = json.jsonify({
         'object': 'text_completion',
