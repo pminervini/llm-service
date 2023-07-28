@@ -174,6 +174,9 @@ def generate():
         return None
 
     prompt_idx = find_sub_list(prompt_ids, generated_ids)
+
+    breakpoint()
+
     assert prompt_idx is not None
     completion_text = tokenizer.decode(generated_ids[prompt_idx[1] + 1:])
 
