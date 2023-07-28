@@ -124,9 +124,11 @@ def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, tempe
     res_lst = []
     for i in range(generation_output.sequences.shape[0]):
         seq = generation_output.sequences[i]
-        score = generation_output.sequences_scores[i].item()
         res = tokenizer.decode(seq, skip_special_tokens=True, clean_up_tokenization_spaces=False)
-        res_lst += [{'text': res, 'score': score}]
+        entry = {'text': res}
+        if hasattr(generation_output, "sequences_scores"):
+            entry['score'] = generation_output.sequences_scores[i].item()
+        res_lst += [entry]
 
     return res_lst, tokenizer
 
@@ -166,7 +168,6 @@ def generate():
 
     for output in output_lst:
         generated_text = output['text']
-        score = output['score']
         generated_ids = tokenizer.encode(generated_text)
         prompt_idx = find_sub_list(prompt_ids, generated_ids)
         assert prompt_idx is not None
@@ -174,9 +175,20 @@ def generate():
         entry = {
             'completion': completion_text,
             'full': generated_text,
-            'score': score
         }
+        if 'score' in output:
+            entry['score'] = output['score']
         generated_lst += [entry]
+
+    def to_choice(entry_):
+        res_ = {
+            'text': entry_['completion'],
+            'full_text': entry_['full'],
+            'finish_reason': 'length'
+        }
+        if 'score' in entry_ and entry_['score'] is not None:
+            res_['score'] = entry_['score']
+        return res_
 
     res = json.jsonify({
         'object': 'text_completion',
@@ -184,14 +196,7 @@ def generate():
 
         'created': int(time.time()),
         'model': model_name,
-        'choices': [
-                {
-                    'text': entry['completion'],
-                    'full_text': entry['full'],
-                    'score': entry['score'],
-                    'finish_reason': 'length'
-                } for entry in generated_lst
-            ]
+        'choices': [to_choice(entry) for entry in generated_lst]
     })
 
     semaphore.release()
