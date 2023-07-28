@@ -72,7 +72,7 @@ def get_model(model_name: str, peft_model_name: Optional[str],
         cache['model'] = None
         cache['tokenizer'] = None
 
-        tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True)
+        tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True, add_prefix_space=True)
         model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", resume_download=True, **model_kwargs)
 
         if peft_model_name is not None:
