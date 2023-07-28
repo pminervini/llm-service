@@ -12,10 +12,11 @@ from werkzeug.exceptions import HTTPException
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformers import GenerationConfig
+from transformers import pipeline
 
 from chainer.util import get_models, decode_kwargs, clean_cache
 
-from typing import Tuple, Optional, Any
+from typing import Tuple, Optional, Any, List
 
 import threading
 import logging
@@ -122,6 +123,7 @@ def evaluate(model_name: str, peft_model_name: Optional[str], prompt: str, tempe
 
     s = generation_output.sequences[0]
     res = tokenizer.decode(s)
+
     return res, tokenizer
 
 
@@ -157,12 +159,23 @@ def generate():
     prompt_ids = tokenizer.encode(prompt)
     generated_ids = tokenizer.encode(generated_text)
 
-    breakpoint()
+    # breakpoint()
 
     nb_prompt_tokens = len(prompt_ids)
     nb_completion_tokens = len(generated_ids)
 
     nb_total_tokens = nb_prompt_tokens + nb_completion_tokens
+
+    def find_sub_list(sl: List[int], l: List[int]) -> Optional[Tuple[int, int]]:
+        sll = len(sl)
+        for ind in (i for i, e in enumerate(l) if e == sl[0]):
+            if l[ind:ind + sll] == sl:
+                return ind, ind + sll - 1
+        return None
+
+    prompt_idx = find_sub_list(prompt_ids, generated_ids)
+    assert prompt_idx is not None
+    completion_text = tokenizer.decode(generated_ids[prompt_idx[1] + 1:])
 
     res = json.jsonify({
         'object': 'text_completion',
@@ -170,8 +183,13 @@ def generate():
 
         'created': int(time.time()),
         'model': model_name,
-        'choices':
-            [{'text': generated_text, 'finish_reason': 'length'}],
+        'choices': [
+                {
+                    'text': completion_text,
+                    'full_text': generated_text,
+                    'finish_reason': 'length'
+                }
+            ],
 
         'usage': {
             'prompt_tokens': nb_prompt_tokens,
