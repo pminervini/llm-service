@@ -130,6 +130,9 @@ def main(argv):
             total += 1.0
 
         f.write(f'\n\nDONE -- Total {total} correct {acc} accuracy {acc / total:.4f}\n')
+        f.flush()
+
+    print(f'\n\nDONE -- Total {total} correct {acc} accuracy {acc / total:.4f}\n')
 
 
 if __name__ == '__main__':
