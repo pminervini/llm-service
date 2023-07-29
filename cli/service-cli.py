@@ -59,6 +59,9 @@ def get_model(model_name: str, peft_model_name: Optional[str],
         cache['model'] = None
         cache['tokenizer'] = None
 
+        if device in {'cuda'}:
+            torch.cuda.empty_cache()
+
         tokenizer, model = create_model(model_name, peft_model_name,
                                         device=device, do_compile=do_compile, dtype=dtype)
         cache = {
