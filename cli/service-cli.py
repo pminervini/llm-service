@@ -96,10 +96,16 @@ def generate():
     prompt = data["prompt"]
 
     temperature = data.get("temperature", 1.0)
-    top_p = data.get("top_p", 0.75)
-    top_k = data.get("top_k", 40)
+    top_p = data.get("top_p", 1.0)
+    top_k = data.get("top_k", 50)
+
     num_beams = data.get("num_beams", 1)
     max_new_tokens = data.get("max_new_tokens", 256)
+
+    do_sample = data.get("do_sample", False)
+    no_repeat_ngram_size = data.get("no_repeat_ngram_size", 0)
+    early_stopping = data.get("early_stopping", False)
+    num_return_sequences = data.get("num_return_sequences", 1)
 
     dtype_str = data.get("dtype", "bfloat16")
     dtype = getattr(torch, dtype_str)
@@ -112,8 +118,18 @@ def generate():
     tokenizer, model = get_model(model_name, peft_model_name, dtype=dtype)
 
     # generate the completion
-    output_lst, tokenizer = evaluate(tokenizer, model, prompt, temperature=temperature, top_p=top_p, top_k=top_k,
-                                     num_beams=num_beams, max_new_tokens=max_new_tokens, dtype=dtype, **kwargs)
+    output_lst, tokenizer = evaluate(tokenizer, model, prompt,
+                                     temperature=temperature,
+                                     top_p=top_p,
+                                     top_k=top_k,
+                                     num_beams=num_beams,
+                                     max_new_tokens=max_new_tokens,
+                                     do_sample=do_sample,
+                                     no_repeat_ngram_size=no_repeat_ngram_size,
+                                     early_stopping=early_stopping,
+                                     num_return_sequences=num_return_sequences,
+                                     dtype=dtype,
+                                     **kwargs)
 
     prompt_ids = tokenizer.encode(prompt)
 

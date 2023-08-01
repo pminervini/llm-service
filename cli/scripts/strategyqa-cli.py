@@ -10,6 +10,8 @@ import requests
 
 from tqdm import tqdm
 
+from typing import Optional, Union
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,27 @@ logger = logging.getLogger(__name__)
 
 def completion(endpoint, data):
     r = requests.post(url=f'{endpoint}/generate', json=data)
+    return r.json()
+
+
+def completion(endpoint,
+               # model: str,
+               # prompt: str,
+               # peft_model: Optional[str] = None,
+
+               # temperature: float = 1.0,
+               # top_k: float = 50,
+               # top_p: float = 1.0,
+               # num_beams: int = 1,
+               # max_new_tokens: int = 256,
+
+               # do_sample: bool = False,
+               # no_repeat_ngram_size: int = 0,
+               # early_stopping: Union[bool, str] = False,
+               # num_return_sequences: int = 1,
+
+               **kwargs):
+    r = requests.post(url=f'{endpoint}/generate', json=kwargs)
     return r.json()
 
 
@@ -53,6 +76,16 @@ def main(argv):
     parser.add_argument('--endpoint', action='store', type=str, default='http://127.0.0.1:5000')
     parser.add_argument('--model', action='store', type=str, default='pminervini/llama-7b')
     parser.add_argument('--output', action='store', type=str, default='outputs/dev_codex_original_step.txt')
+
+    parser.add_argument('--temperature', action='store', type=float, default=1.0)
+    parser.add_argument('--top-p', action='store', type=float, default=1.0)
+    parser.add_argument('--top-k', action='store', type=int, default=50)
+    parser.add_argument('--num-beams', action='store', type=int, default=1)
+    parser.add_argument('--max-new-tokens', action='store', type=int, default=256)
+    parser.add_argument('--do-sample', action='store', type=bool, default=False)
+    parser.add_argument('--no-repeat-ngram-size', action='store', type=int, default=0)
+    parser.add_argument('--early-stopping', action='store', type=bool, default=False)
+    parser.add_argument('--num-return-sequences', action='store', type=int, default=1)
 
     args = parser.parse_args(argv)
     prompt_path = args.prompt
@@ -99,14 +132,18 @@ def main(argv):
             prompt_q = prompt_original_step + '\nQ: ' + q + '\n'
             prompt_q += 'A:'
 
-            data = {
-                "model": model_name,
-                "prompt": prompt_q,
-                "temperature": 0.0,
-                "max_new_tokens": 256
-            }
-
-            response = completion(endpoint, data)
+            response = completion(endpoint,
+                                  model=model_name,
+                                  prompt=prompt_q,
+                                  temperature=args.temperature,
+                                  top_p=args.top_p,
+                                  top_k=args.top_k,
+                                  num_beams=args.num_beams,
+                                  max_new_tokens=args.max_new_tokens,
+                                  do_sample=args.do_sample,
+                                  no_repeat_ngram_size=args.no_repeat_ngram_size,
+                                  early_stopping=args.early_stopping,
+                                  num_return_sequences=args.num_return_sequences)
 
             # breakpoint()
 

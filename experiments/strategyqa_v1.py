@@ -19,9 +19,16 @@ def summary(configuration):
 
 
 def to_cmd(c, _path=None):
+
+    model_name = c["m"]
+    if c["m"] in {'llama-7b', 'llama-13b', 'llama-30b', 'llama-65b'}:
+        model_name = f'pminervini/{c["m"]}'
+    elif c["m"] in {'Llama-2-7b-hf', 'Llama-2-13b-hf', 'Llama-2-70b-hf', 'Llama-2-7b-chat-hf', 'Llama-2-13b-chat-hf', 'Llama-2-70b-chat-hf'}:
+        model_name = f'meta-llama/{c["m"]}'
+
     command = f'PYTHONPATH=. python3 ./cli/scripts/strategyqa-cli.py ' \
               f'--prompt lib_prompt/strategyqa/prompt_{c["p"]}.txt ' \
-              f'--model pminervini/{c["m"]} --output outputs/dev_{c["m"]}_{c["p"]}.log'
+              f'--model {model_name} --output outputs/dev_{c["m"]}_{c["p"]}.log'
 
     return command
 
@@ -34,7 +41,9 @@ def to_logfile(c, path):
 
 def main(argv):
     hyp_space = dict(
-        m=['llama-7b', 'llama-13b', 'llama-30b', 'llama-65b'],
+        m=['llama-7b', 'llama-13b', 'llama-30b', 'llama-65b',
+           'Llama-2-7b-hf', 'Llama-2-13b-hf', 'Llama-2-70b-hf',
+           'Llama-2-7b-chat-hf', 'Llama-2-13b-chat-hf', 'Llama-2-70b-chat-hf'],
         p=['complex', 'complex_conjunction', 'complex_step', 'original', 'original_step', 'simple', 'simple_step']
     )
 
