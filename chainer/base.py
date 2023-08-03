@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 
-
-import sys
-import time
 import torch
 
 from peft import PeftModel
@@ -27,18 +24,20 @@ def create_model(model_name: str, peft_model_name: Optional[str], device: str,
 
     if device == "cuda":
         model_kwargs['torch_dtype'] = peft_kwargs['torch_dtype'] = dtype
-        model_kwargs['device_map'] = peft_kwargs['device_map'] = "auto"
+        model_kwargs['device_map'] = peft_kwargs['device_map'] = 'balanced_low_0'  # 'auto'
     else:
         model_kwargs['low_cpu_mem_usage'] = True
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True, add_prefix_space=True)
-    model = AutoModelForCausalLM.from_pretrained(model_name, resume_download=True, **model_kwargs)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True, padding_side="left")  # add_prefix_space=True,
+    model = AutoModelForCausalLM.from_pretrained(model_name, resume_download=True, trust_remote_code=True, **model_kwargs)
 
     if peft_model_name is not None:
         model = PeftModel.from_pretrained(model, peft_model_name, resume_download=True, **peft_kwargs)
 
     if do_compile is True:
         model = torch.compile(model)
+
+    model.eval()
 
     return tokenizer, model
 
