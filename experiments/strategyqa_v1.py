@@ -25,6 +25,8 @@ def to_cmd(c, _path=None):
         model_name = f'pminervini/{c["m"]}'
     elif c["m"] in {'Llama-2-7b-hf', 'Llama-2-13b-hf', 'Llama-2-70b-hf', 'Llama-2-7b-chat-hf', 'Llama-2-13b-chat-hf', 'Llama-2-70b-chat-hf'}:
         model_name = f'meta-llama/{c["m"]}'
+    elif 'Platypus2' in c["m"]:
+        model_name = f'garage-bAInd/{c["m"]}'
 
     command = f'PYTHONPATH=. python3 ./cli/scripts/strategyqa-cli.py ' \
               f'--prompt lib_prompt/strategyqa/prompt_{c["p"]}.txt ' \
@@ -43,7 +45,11 @@ def main(argv):
     hyp_space = dict(
         m=['llama-7b', 'llama-13b', 'llama-30b', 'llama-65b',
            'Llama-2-7b-hf', 'Llama-2-13b-hf', 'Llama-2-70b-hf',
-           'Llama-2-7b-chat-hf', 'Llama-2-13b-chat-hf', 'Llama-2-70b-chat-hf'],
+           'Llama-2-7b-chat-hf', 'Llama-2-13b-chat-hf', 'Llama-2-70b-chat-hf',
+           'Camel-Platypus2-70B', 'Camel-Platypus2-13B',
+           'Platypus2-70B', 'Platypus2-13B', 'Platypus2-30B',
+           'Platypus2-70B-instruct'
+           ],
         p=['complex', 'complex_conjunction', 'complex_step', 'original', 'original_step', 'simple', 'simple_step']
     )
 

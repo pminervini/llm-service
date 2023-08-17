@@ -128,14 +128,14 @@ def prepare_input(tokenizer, prompts):
     input_tokens = {k: input_tokens[k] for k in input_tokens if k in ["input_ids", "attention_mask"]}
     for t in input_tokens:
         if torch.is_tensor(input_tokens[t]):
-            input_tokens[t] = input_tokens[t].to('cuda')
+            input_tokens[t] = input_tokens[t] # .to('cuda')
 
     return input_tokens
 
 
 def load(ckpt_dir, model_type):
     tokenizer = AutoTokenizer.from_pretrained(ckpt_dir, padding_side="left")
-    model = AutoModelForCausalLM.from_pretrained(ckpt_dir, device_map='balanced_low_0', torch_dtype=torch.bfloat16, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(ckpt_dir, trust_remote_code=True)
     if tokenizer.pad_token_id is None:
         if tokenizer.eos_token_id is not None:
             tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -194,6 +194,8 @@ def main(ckpt_dir: str, param_size: str, model_type: str):
                 prompt = '\n\n'.join(prompt_split)
             label = test_df.iloc[i, test_df.shape[1] - 1]
             records.append({'prompt': prompt, 'answer': label})
+
+        breakpoint()
 
         pred_answers = batch_infer(model, tokenizer, [record['prompt'] for record in records])
         gold_answers = [record['answer'] for record in records]

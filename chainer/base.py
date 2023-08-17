@@ -28,7 +28,7 @@ def create_model(model_name: str, peft_model_name: Optional[str], device: str,
     else:
         model_kwargs['low_cpu_mem_usage'] = True
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True, padding_side="left")  # add_prefix_space=True,
+    tokenizer = AutoTokenizer.from_pretrained(model_name, resume_download=True, padding_side="left")
     model = AutoModelForCausalLM.from_pretrained(model_name, resume_download=True, trust_remote_code=True, **model_kwargs)
 
     if peft_model_name is not None:
