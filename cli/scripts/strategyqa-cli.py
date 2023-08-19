@@ -113,7 +113,7 @@ def main(argv):
         prompt_original_step = f.read()
 
     hdd = psutil.disk_usage('/')
-    if (hdd.free / (2 ** 30)) < 400.0:
+    if (hdd.free / (2 ** 30)) < 500.0:
         free_space(endpoint)
 
     acc = 0.0
