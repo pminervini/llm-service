@@ -42,7 +42,7 @@ def create_model(model_name: str, peft_model_name: Optional[str], device: str,
     return tokenizer, model
 
 
-def evaluate(tokenizer, model, prompt: str, temperature: float = 0.1, top_p: float = 0.75,
+def generate(tokenizer, model, prompt: str, temperature: float = 0.1, top_p: float = 0.75,
              top_k: int = 40, num_beams: int = 1, max_new_tokens: int = 128, **kwargs) -> Tuple[List[Any], Any]:
 
     logger.info(f"prompt: {prompt}")

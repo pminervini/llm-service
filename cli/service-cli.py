@@ -9,7 +9,7 @@ from flask import Flask, make_response, request, json
 from werkzeug.exceptions import HTTPException
 
 from chainer.util import get_models, decode_kwargs, clean_cache, find_sub_list
-from chainer.base import create_model, evaluate
+from chainer.base import create_model, generate
 
 from typing import Tuple, Optional, Any, List
 
@@ -118,7 +118,7 @@ def generate():
     tokenizer, model = get_model(model_name, peft_model_name, dtype=dtype)
 
     # generate the completion
-    output_lst, tokenizer = evaluate(tokenizer, model, prompt,
+    output_lst, tokenizer = generate(tokenizer, model, prompt,
                                      temperature=temperature,
                                      top_p=top_p,
                                      top_k=top_k,

@@ -1,1 +1,1 @@
-# cot-playground
+# llm-service
